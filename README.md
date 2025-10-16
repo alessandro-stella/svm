@@ -1,2 +1,3 @@
-# svm
-"Simple Version Manager" (someone says that the S stands for "Star"), a study case to recreate basic git functionalities
+# SVM
+"Simple Version Manager", a study case to recreate basic git functionalities
+Btw, someone says that the S stands for "Star"...
