@@ -9,9 +9,11 @@
 
 #define HASH_SIZE 64;
 
+void print_help() { printf("HELP"); }
+
 int main(int argc, char *argv[]) {
   if (argc == 1) {
-    printf("No arguments!\n");
+    print_help();
     return 1;
   }
 
@@ -21,7 +23,8 @@ int main(int argc, char *argv[]) {
 
   case 'i': {
     if (strcmp(argv[1], "init") != 0) {
-      printf("BOH 2");
+      printf("Unknown command!\n");
+      print_help();
       break;
     }
 
@@ -58,7 +61,8 @@ int main(int argc, char *argv[]) {
 
   case 'a': {
     if (strcmp(argv[1], "add") != 0) {
-      printf("BOH 1");
+      printf("Unknown command!\n");
+      print_help();
       break;
     }
 
@@ -142,7 +146,8 @@ int main(int argc, char *argv[]) {
 
   case 'c': {
     if (strcmp(argv[1], "create") != 0) {
-      printf("BOH 1");
+      printf("Unknown command!\n");
+      print_help();
       break;
     }
 
@@ -167,7 +172,8 @@ int main(int argc, char *argv[]) {
 
   case 'u': {
     if (strcmp(argv[1], "unpack") != 0) {
-      printf("BOH 3");
+      printf("Unknown command!\n");
+      print_help();
       break;
     }
 
@@ -206,7 +212,8 @@ int main(int argc, char *argv[]) {
   } break;
 
   default:
-    printf("BOH");
+    printf("Unknown command!\n");
+    print_help();
     break;
   }
 
