@@ -12,4 +12,4 @@ Btw, someone says that the S stands for "Star"...
 | `svm init`  | -         | Initialize svm project inside current directory |
 | `svm clean` | -         | Remove svm project inside current directory |
 | `svm add`   | -         | Add all files in current directory to current svm distribution |
-| `svm unpack`| `<blob_name>` | Show content of blob of current svm distribution |
+| `svm unpack`| `<blob_hash>` | Show content of blob of current svm distribution |
