@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   switch (argv[1][0]) {
   case 'h': {
     if (strcmp(argv[1], "help") != 0) {
-      printf("Unknown command!\n");
+      printf("Unknown command!\n\n");
     }
 
     print_help();
@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 
   case 'i': {
     if (strcmp(argv[1], "init") != 0) {
-      printf("Unknown command!\n");
+      printf("Unknown command!\n\n");
       print_help();
       break;
     }
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
 
   case 'a': {
     if (strcmp(argv[1], "add") != 0) {
-      printf("Unknown command!\n");
+      printf("Unknown command!\n\n");
       print_help();
       break;
     }
@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
 
   case 'u': {
     if (strcmp(argv[1], "unpack") != 0) {
-      printf("Unknown command!\n");
+      printf("Unknown command!\n\n");
       print_help();
       return -1;
     }
@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
 
   case 'c': {
     if (strcmp(argv[1], "clean") != 0) {
-      printf("Unknown command!\n");
+      printf("Unknown command!\n\n");
       print_help();
       return -1;
     }
@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
   } break;
 
   default:
-    printf("Unknown command!\n");
+    printf("Unknown command!\n\n");
     print_help();
     break;
   }
