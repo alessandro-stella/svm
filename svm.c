@@ -137,14 +137,13 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    size_t tree_size;
-    char *tree_hash = create_tree(".", &tree_size);
+    char *tree_hash = create_tree(".");
 
     if (tree_hash == NULL) {
       printf("\nError during tree creation\n");
     } else {
       printf("\nTree generated successfully\n");
-      printf("Hash: %s - size: %lu", tree_hash, tree_size);
+      printf("Hash: %s", tree_hash);
     }
 
     free(tree_hash);
@@ -158,6 +157,7 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
+    struct stat st;
     if (stat(".svm", &st) == -1) {
       printf("svm not initialized\n");
       return -1;
@@ -167,9 +167,9 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    if (argc != 4) {
+    if (argc != 3) {
       printf("Not enough arguments!\n");
-      printf("Usage: svm unpack <blob> <original_size>\n");
+      printf("Usage: svm unpack <blob>\n");
       return -1;
     }
 
@@ -180,8 +180,8 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    size_t original_len = strtoul(argv[3], NULL, 10);
-    unsigned char *decompressed = read_blob(argv[2], original_len);
+    size_t original_len;
+    unsigned char *decompressed = read_blob(argv[2], &original_len);
 
     if (!decompressed) {
       printf("Failed to decompress blob.\n");
