@@ -1,19 +1,19 @@
 #include "blob_handler.h"
-#include <openssl/evp.h>
+#include "hashing.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <zconf.h>
 #include <zlib.h>
 
 // ============================
 // Creating blob
 // ============================
 
-char *create_blob(const char *filename, size_t *size) {
+char *create_blob_from_file(const char *filename, size_t *size) {
   FILE *f = fopen(filename, "rb");
   if (!f)
     return NULL;
@@ -175,53 +175,4 @@ unsigned char *decompress_file(const unsigned char *blob, size_t blob_size, size
   }
 
   return decompressed;
-}
-
-// ============================
-// Hashing
-// ============================
-
-unsigned char *create_hash(const unsigned char *blob, size_t len, size_t *hash_len) {
-  EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-  if (!ctx)
-    return NULL;
-
-  const EVP_MD *md = EVP_sha256();
-  if (EVP_DigestInit_ex(ctx, md, NULL) != 1) {
-    EVP_MD_CTX_free(ctx);
-    return NULL;
-  }
-
-  EVP_DigestUpdate(ctx, blob, len);
-
-  unsigned char *hash = malloc(EVP_MD_size(md));
-  if (!hash) {
-    EVP_MD_CTX_free(ctx);
-    return NULL;
-  }
-
-  unsigned int out_len;
-  if (EVP_DigestFinal_ex(ctx, hash, &out_len) != 1) {
-    free(hash);
-    EVP_MD_CTX_free(ctx);
-    return NULL;
-  }
-
-  EVP_MD_CTX_free(ctx);
-
-  *hash_len = out_len;
-  return hash;
-}
-
-char *hash_to_hex(const unsigned char *hash, size_t len) {
-  char *hex = malloc(len * 2 + 1);
-  if (!hex)
-    return NULL;
-
-  for (size_t i = 0; i < len; i++) {
-    sprintf(hex + i * 2, "%02x", hash[i]);
-  }
-
-  hex[len * 2] = '\0';
-  return hex;
 }

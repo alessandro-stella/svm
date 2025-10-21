@@ -1,4 +1,5 @@
 #include "blob_handler.h"
+#include "tree_builder.h"
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,9 +32,10 @@ int main(int argc, char *argv[]) {
   case 'h': {
     if (strcmp(argv[1], "help") != 0) {
       printf("Unknown command!\n");
-      print_help();
-      break;
     }
+
+    print_help();
+  } break;
 
   case 'i': {
     if (strcmp(argv[1], "init") != 0) {
@@ -55,7 +57,7 @@ int main(int argc, char *argv[]) {
 
     size_t content_len = strlen("master");
     if (fwrite("master", 1, content_len, current_dist) != content_len) {
-      printf("Errore nella scrittura del contenuto");
+      printf("Error while writing current dist");
       fclose(current_dist);
       return -1;
     }
@@ -78,6 +80,15 @@ int main(int argc, char *argv[]) {
       printf("Unknown command!\n");
       print_help();
       break;
+    }
+
+    if (stat(".svm", &st) == -1) {
+      printf("svm not initialized\n");
+      return false;
+    }
+    if (stat(".svm/dists", &st) == -1) {
+      printf("distribution directory missing\n");
+      return false;
     }
 
     FILE *f = fopen(".svm/current_dist", "rb");
@@ -125,36 +136,17 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    DIR *d;
-    struct dirent *dir;
+    size_t tree_size;
+    char *tree_hash = create_tree(".", &tree_size);
 
-    d = opendir(".");
-
-    if (d) {
-      while ((dir = readdir(d)) != NULL) {
-        if (dir->d_type == DT_DIR) {
-          if (dir->d_name[0] == '.') {
-            continue;
-          }
-        }
-
-        size_t file_size;
-        char *hash = create_blob(dir->d_name, &file_size);
-
-        if (hash == NULL) {
-          printf("Error during blob creation of %s\n", dir->d_name);
-          continue;
-        }
-
-        printf("Blob for %s (original size: %lu) created: %s", dir->d_name, file_size, hash);
-        printf("\n");
-
-        fprintf(f, "blob %s %lu %s\n", hash, file_size, dir->d_name);
-        free(hash);
-      }
-      closedir(d);
+    if (tree_hash == NULL) {
+      printf("\nError during tree creation\n");
+    } else {
+      printf("\nTree generated successfully\n");
+      printf("Hash: %s - size: %lu", tree_hash, tree_size);
     }
 
+    free(tree_hash);
     fclose(f);
   } break;
 
@@ -205,6 +197,5 @@ int main(int argc, char *argv[]) {
     break;
   }
 
-    return 1;
-  }
+  return 1;
 }
