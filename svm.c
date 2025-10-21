@@ -7,9 +7,17 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define HASH_SIZE 64;
+void print_help() {
+  const char *commands[4][3] = {{"help", "", "Display all svm commands"},
+                                {"init", "", "Initialize svm project inside current directory"},
+                                {"add", "", "Add all files in current directory to current svm distribution"},
+                                {"unpack", "<blob_name>", "Show content of blob of current svm distribution"}};
 
-void print_help() { printf("HELP"); }
+  for (int i = 0; i < 4; i++) {
+    printf("svm %s %s\n", commands[i][0], commands[i][1]);
+    printf("%s\n\n", commands[i][2]);
+  }
+}
 
 int main(int argc, char *argv[]) {
   if (argc == 1) {
@@ -20,6 +28,12 @@ int main(int argc, char *argv[]) {
   struct stat st;
 
   switch (argv[1][0]) {
+  case 'h': {
+    if (strcmp(argv[1], "help") != 0) {
+      printf("Unknown command!\n");
+      print_help();
+      break;
+    }
 
   case 'i': {
     if (strcmp(argv[1], "init") != 0) {
@@ -144,32 +158,6 @@ int main(int argc, char *argv[]) {
     fclose(f);
   } break;
 
-  case 'c': {
-    if (strcmp(argv[1], "create") != 0) {
-      printf("Unknown command!\n");
-      print_help();
-      break;
-    }
-
-    if (argc != 3) {
-      printf("Not enough arguments!\n");
-      printf("Usage: svm create <filename>\n");
-      break;
-    }
-
-    size_t file_size;
-    char *hash = create_blob(argv[2], &file_size);
-
-    if (hash == NULL) {
-      printf("Error during blob creation\n");
-      break;
-    }
-
-    printf("Hash: %s - File size: %lu", hash, file_size);
-
-    free(hash);
-  } break;
-
   case 'u': {
     if (strcmp(argv[1], "unpack") != 0) {
       printf("Unknown command!\n");
@@ -217,5 +205,6 @@ int main(int argc, char *argv[]) {
     break;
   }
 
-  return 1;
+    return 1;
+  }
 }
