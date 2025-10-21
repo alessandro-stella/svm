@@ -4,16 +4,19 @@
 OUTPUT="svm"
 
 # All C source files in the current directory
-SOURCES=$(ls *.c)
+SOURCES=$(ls *.c)  # svm.c, hashing.c, blob_handler.c
+
+# All C source files inside commands/
+COMMANDS_SOURCES=$(ls commands/*.c)
 
 # Compilation flags
-CFLAGS="-Wall -O2"  # warnings and optimizations
+CFLAGS="-Wall -O2"
 
 # Libraries to link
 LIBS="-lz -lcrypto"
 
-# Compile
-gcc $CFLAGS $SOURCES -o $OUTPUT $LIBS
+# Compile all together
+gcc $CFLAGS $SOURCES $COMMANDS_SOURCES -o $OUTPUT $LIBS
 
 # Check compilation success
 if [ $? -eq 0 ]; then

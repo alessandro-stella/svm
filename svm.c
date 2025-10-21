@@ -1,11 +1,10 @@
-#include "blob_handler.h"
-#include "directory_handler.h"
+#include "svm_commands.h"
+
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 void print_help() {
@@ -28,6 +27,10 @@ int main(int argc, char *argv[]) {
   }
 
   struct stat st;
+  if (stat(".svm", &st) == -1 && strcmp(argv[1], "init")) {
+    printf("svm not initialized\n");
+    return -1;
+  }
 
   switch (argv[1][0]) {
   case 'h': {
@@ -50,25 +53,7 @@ int main(int argc, char *argv[]) {
       break;
     }
 
-    mkdir(".svm", 0700);
-    mkdir(".svm/objects", 0700);
-    mkdir(".svm/dists", 0700);
-
-    FILE *current_dist = fopen(".svm/current_dist", "wb");
-
-    size_t content_len = strlen("master");
-    if (fwrite("master", 1, content_len, current_dist) != content_len) {
-      printf("Error while writing current dist");
-      fclose(current_dist);
-      return -1;
-    }
-
-    if (current_dist == NULL) {
-      printf("Error during initialization");
-      return -1;
-    }
-
-    if (fclose(current_dist) != 0) {
+    if (!init_command()) {
       printf("Error during initialization");
       return -1;
     }
@@ -83,12 +68,8 @@ int main(int argc, char *argv[]) {
       break;
     }
 
-    if (stat(".svm", &st) == -1) {
-      printf("svm not initialized\n");
-      break;
-    }
     if (stat(".svm/dists", &st) == -1) {
-      printf("distribution directory missing\n");
+      printf("Distribution directory missing\n");
       break;
     }
 
@@ -137,7 +118,7 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    char *tree_hash = create_tree(".");
+    char *tree_hash = add_command(".");
 
     if (tree_hash == NULL) {
       printf("\nError during tree creation\n");
@@ -158,10 +139,7 @@ int main(int argc, char *argv[]) {
     }
 
     struct stat st;
-    if (stat(".svm", &st) == -1) {
-      printf("svm not initialized\n");
-      return -1;
-    }
+
     if (stat(".svm/objects", &st) == -1) {
       printf("objects directory missing\n");
       return -1;
@@ -181,7 +159,7 @@ int main(int argc, char *argv[]) {
     }
 
     size_t original_len;
-    unsigned char *decompressed = read_blob(argv[2], &original_len);
+    unsigned char *decompressed = unpack_command(argv[2], &original_len);
 
     if (!decompressed) {
       printf("Failed to decompress blob.\n");
@@ -199,11 +177,6 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    if (stat(".svm", &st) == -1) {
-      printf("svm not initialized\n");
-      return -1;
-    }
-
     printf("Are you sure you want to remove svm from current project? [y/N]: ");
     char choice;
     scanf("%c", &choice);
@@ -211,12 +184,16 @@ int main(int argc, char *argv[]) {
     if (choice != 'y' && choice != 'Y')
       return 0;
 
-    if (remove_dir(".svm") != 0) {
+    if (clear_command(".svm") != 0) {
       perror("Couldn't remove svm from current project");
       return -1;
     }
 
     printf("svm removed successfully\n");
+  } break;
+
+  case 'd': {
+
   } break;
 
   default:

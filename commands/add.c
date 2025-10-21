@@ -1,6 +1,6 @@
-#include "directory_handler.h"
-#include "blob_handler.h"
-#include "hashing.h"
+#include "../blob_handler.h"
+#include "../hashing.h"
+#include "../svm_commands.h"
 
 #include <dirent.h>
 #include <stddef.h>
@@ -43,7 +43,7 @@ char *join_path(const char *base, const char *subdir) {
 // Recursively create project tree
 // ============================
 
-char *create_tree(const char *c) {
+char *add_command(const char *c) {
   FILE *tmp = tmpfile();
 
   if (!tmp) {
@@ -69,7 +69,7 @@ char *create_tree(const char *c) {
           return NULL;
         }
 
-        char *tree_hash = create_tree(inner_dir);
+        char *tree_hash = add_command(inner_dir);
         free(inner_dir);
 
         if (tree_hash == NULL) {
@@ -124,58 +124,3 @@ char *create_tree(const char *c) {
 // ============================
 // Remove .svm
 // ============================
-
-int remove_dir(const char *path) {
-  DIR *d = opendir(path);
-  if (!d) {
-    perror("opendir");
-    return -1;
-  }
-
-  struct dirent *entry;
-  int ret = 0;
-
-  while ((entry = readdir(d)) != NULL) {
-    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
-      continue;
-
-    size_t path_len = strlen(path) + strlen(entry->d_name) + 2;
-    char *fullpath = malloc(path_len);
-    if (!fullpath) {
-      perror("malloc");
-      ret = -1;
-      break;
-    }
-    snprintf(fullpath, path_len, "%s/%s", path, entry->d_name);
-
-    struct stat st;
-    if (stat(fullpath, &st) != 0) {
-      perror("stat");
-      free(fullpath);
-      ret = -1;
-      continue;
-    }
-
-    if (S_ISDIR(st.st_mode)) {
-      if (remove_dir(fullpath) != 0) {
-        ret = -1;
-      }
-    } else {
-      if (unlink(fullpath) != 0) {
-        perror("unlink");
-        ret = -1;
-      }
-    }
-
-    free(fullpath);
-  }
-
-  closedir(d);
-
-  if (rmdir(path) != 0) {
-    perror("rmdir");
-    ret = -1;
-  }
-
-  return ret;
-}
