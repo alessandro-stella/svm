@@ -1,6 +1,5 @@
-#include "../blob_handler.h"
-#include "../hashing.h"
 #include "../svm_commands.h"
+#include "../utils/blob_handler.h"
 
 #include <dirent.h>
 #include <stddef.h>
@@ -10,10 +9,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-// ============================
-// Create directory path
-// ============================
 
 char *join_path(const char *base, const char *subdir) {
   if (!base)
@@ -38,10 +33,6 @@ char *join_path(const char *base, const char *subdir) {
 
   return path;
 }
-
-// ============================
-// Recursively create project tree
-// ============================
 
 char *add_command(const char *c) {
   FILE *tmp = tmpfile();
@@ -73,7 +64,6 @@ char *add_command(const char *c) {
         free(inner_dir);
 
         if (tree_hash == NULL) {
-          free(tree_hash);
           return NULL;
         }
 
@@ -84,6 +74,7 @@ char *add_command(const char *c) {
 
       size_t file_size;
       char *file_path = join_path(c, dir->d_name);
+
       char *hash = create_blob_from_file(file_path, &file_size);
       free(file_path);
 
@@ -102,25 +93,21 @@ char *add_command(const char *c) {
     closedir(d);
   }
 
-  fseek(tmp, 0, SEEK_SET);
-
   fseek(tmp, 0, SEEK_END);
-  size_t size = ftell(tmp);
+  size_t tree_content_size = ftell(tmp);
   fseek(tmp, 0, SEEK_SET);
 
-  unsigned char *data = malloc(size);
-  fread(data, 1, size, tmp);
-
-  size_t hash_len;
-  unsigned char *hash = create_hash(data, size, &hash_len);
-  char *hex_hash = hash_to_hex(hash, hash_len);
-
-  create_file(hex_hash, data, size);
-
+  unsigned char *tree_content_data = malloc(tree_content_size);
+  if (!tree_content_data) {
+    fclose(tmp);
+    return NULL;
+  }
+  fread(tree_content_data, 1, tree_content_size, tmp);
   fclose(tmp);
+
+  size_t full_size_ignored;
+  char *hex_hash = create_object_from_data("tree", tree_content_data, tree_content_size, &full_size_ignored);
+
+  free(tree_content_data);
   return hex_hash;
 }
-
-// ============================
-// Remove .svm
-// ============================

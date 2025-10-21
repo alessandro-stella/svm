@@ -9,6 +9,10 @@ SOURCES=$(ls *.c)  # svm.c, hashing.c, blob_handler.c
 # All C source files inside commands/
 COMMANDS_SOURCES=$(ls commands/*.c)
 
+# All C source files inside utils/
+UTILS_SOURCES=$(ls utils/*.c)
+
+
 # Compilation flags
 CFLAGS="-Wall -O2"
 
@@ -16,7 +20,7 @@ CFLAGS="-Wall -O2"
 LIBS="-lz -lcrypto"
 
 # Compile all together
-gcc $CFLAGS $SOURCES $COMMANDS_SOURCES -o $OUTPUT $LIBS
+gcc $CFLAGS $SOURCES $COMMANDS_SOURCES $UTILS_SOURCES -o $OUTPUT $LIBS
 
 # Check compilation success
 if [ $? -eq 0 ]; then

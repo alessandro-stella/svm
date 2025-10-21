@@ -83,21 +83,20 @@ int main(int argc, char *argv[]) {
     long file_size = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    if (file_size < 0) {
-      printf("Error while retreiving current dist");
+    if (file_size <= 0) {
+      printf("Error while retreiving current dist (empty file)");
       fclose(f);
       return -1;
     }
 
     char *current_dist = (char *)malloc(file_size + 1);
     if (!current_dist) {
-      printf("Error during memory allocation");
+      perror("malloc");
       fclose(f);
       return -1;
     }
 
     size_t read_bytes = fread(current_dist, 1, file_size, f);
-
     fclose(f);
 
     if (read_bytes != (size_t)file_size) {
@@ -108,27 +107,29 @@ int main(int argc, char *argv[]) {
 
     current_dist[file_size] = '\0';
 
-    char dist_path[256];
-    snprintf(dist_path, sizeof(dist_path), ".svm/dists/%s", current_dist);
-
-    f = fopen(dist_path, "w");
-
-    if (!f) {
-      printf("Error while opening or creating dist file");
-      return -1;
-    }
-
     char *tree_hash = add_command(".");
 
     if (tree_hash == NULL) {
       printf("\nError during tree creation\n");
     } else {
       printf("\nTree generated successfully\n");
-      printf("Hash: %s", tree_hash);
+      printf("Hash: %s\n", tree_hash);
+
+      // OPTIONAL: Se vuoi salvare l'hash nel file della distribuzione
+      // (cosa che farebbe un commit), puoi riaprire il file qui in append.
+      /*
+      char dist_path[256];
+      snprintf(dist_path, sizeof(dist_path), ".svm/dists/%s", current_dist);
+      FILE *dist_f = fopen(dist_path, "a");
+      if (dist_f) {
+          fprintf(dist_f, "%s\n", tree_hash);
+          fclose(dist_f);
+      }
+      */
     }
 
     free(tree_hash);
-    fclose(f);
+    free(current_dist);
   } break;
 
   case 'u': {
@@ -159,14 +160,28 @@ int main(int argc, char *argv[]) {
     }
 
     size_t original_len;
-    unsigned char *decompressed = unpack_command(argv[2], &original_len);
+    char *decompressed = unpack_command(argv[2], &original_len);
 
     if (!decompressed) {
       printf("Failed to decompress blob.\n");
       return -1;
     }
 
-    fwrite(decompressed, 1, original_len, stdout);
+    char *content_start = strchr(decompressed, '\0');
+
+    if (content_start == NULL) {
+      free(decompressed);
+      return -1;
+    }
+
+    content_start++;
+
+    size_t content_len = original_len - (content_start - decompressed);
+
+    fwrite(content_start, 1, content_len, stdout);
+
+    printf("\n");
+
     free(decompressed);
   } break;
 
@@ -179,7 +194,8 @@ int main(int argc, char *argv[]) {
 
     printf("Are you sure you want to remove svm from current project? [y/N]: ");
     char choice;
-    scanf("%c", &choice);
+    fflush(stdin);
+    scanf(" %c", &choice);
 
     if (choice != 'y' && choice != 'Y')
       return 0;
@@ -190,10 +206,6 @@ int main(int argc, char *argv[]) {
     }
 
     printf("svm removed successfully\n");
-  } break;
-
-  case 'd': {
-
   } break;
 
   default:

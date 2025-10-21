@@ -2,9 +2,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <zlib.h>
 
-unsigned char *unpack_command(const char *hex_hash, size_t *out_original_len) {
+char *unpack_command(const char *hex_hash, size_t *out_original_len) {
   char file_path[256];
   snprintf(file_path, sizeof(file_path), ".svm/objects/%.2s/%s", hex_hash, hex_hash + 2);
 
@@ -13,7 +14,11 @@ unsigned char *unpack_command(const char *hex_hash, size_t *out_original_len) {
     return NULL;
 
   size_t original_len;
-  fread(&original_len, sizeof(size_t), 1, f);
+
+  if (fread(&original_len, sizeof(size_t), 1, f) != 1) {
+    fclose(f);
+    return NULL;
+  }
   if (out_original_len)
     *out_original_len = original_len;
 
@@ -22,18 +27,35 @@ unsigned char *unpack_command(const char *hex_hash, size_t *out_original_len) {
   fseek(f, sizeof(size_t), SEEK_SET);
 
   unsigned char *compressed_data = malloc(blob_size);
-  fread(compressed_data, 1, blob_size, f);
+  if (!compressed_data) {
+    fclose(f);
+    return NULL;
+  }
+  if (fread(compressed_data, 1, blob_size, f) != blob_size) {
+    free(compressed_data);
+    fclose(f);
+    return NULL;
+  }
   fclose(f);
 
-  unsigned char *decompressed = malloc(original_len);
-  uLongf dest_len = original_len;
-  if (uncompress(decompressed, &dest_len, compressed_data, blob_size) != Z_OK) {
+  char *decompressed = malloc(original_len + 1);
+  if (!decompressed) {
+    free(compressed_data);
+    return NULL;
+  }
+
+  uLongf dest_len = (uLongf)original_len;
+
+  if (uncompress((Bytef *)decompressed, &dest_len, compressed_data, blob_size) != Z_OK) {
     free(decompressed);
     free(compressed_data);
     return NULL;
   }
 
   free(compressed_data);
+
+  decompressed[dest_len] = '\0';
+
   return decompressed;
 }
 
