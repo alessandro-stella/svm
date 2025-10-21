@@ -4,9 +4,9 @@ Btw, someone says that the S stands for "Star"...
 
 ---
 
-## Comandi disponibili
+## Available commands
 
-| Comando | Argomenti | Descrizione |
+| Command | Arguments | Description |
 |---------|-----------|-------------|
 | `help`  | -         | Display all svm commands |
 | `init`  | -         | Initialize svm project inside current directory |
