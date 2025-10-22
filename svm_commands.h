@@ -5,8 +5,16 @@
 #include <stdlib.h>
 
 char *add_command(const char *c);
+
 int clear_command(const char *path);
+
+bool dist_show();
+bool dist_create(const char *dist_name, const char *path);
+
 bool init_command();
+
+bool switch_command(const char *dist_name, const char *path);
+
 char *unpack_command(const char *hex_hash, size_t *out_original_len);
 
 #endif

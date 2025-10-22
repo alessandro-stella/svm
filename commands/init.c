@@ -1,29 +1,42 @@
+#include "../svm_commands.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 
 bool init_command() {
-  mkdir(".svm", 0700);
-  mkdir(".svm/objects", 0700);
-  mkdir(".svm/dists", 0700);
+  if (mkdir(".svm", 0700) != 0) {
+  }
+
+  if (mkdir(".svm/objects", 0700) != 0) {
+  }
+
+  if (mkdir(".svm/dists", 0700) != 0) {
+  }
 
   FILE *current_dist = fopen(".svm/current_dist", "wb");
+  if (!current_dist)
+    return false;
 
-  size_t content_len = strlen("master");
-  if (fwrite("master", 1, content_len, current_dist) != content_len) {
+  if (fwrite("master", 1, strlen("master"), current_dist) != strlen("master")) {
     fclose(current_dist);
     return false;
   }
+  fclose(current_dist);
 
-  if (current_dist == NULL) {
+  char *tree_hash = add_command(".");
+  if (!tree_hash)
     return false;
-  }
 
-  if (fclose(current_dist) != 0) {
-    printf("Error during fclose");
+  char dist_path[256];
+  snprintf(dist_path, sizeof(dist_path), ".svm/dists/%s", "master");
+  FILE *dist_f = fopen(dist_path, "w");
+  if (!dist_f)
     return false;
-  }
+
+  fprintf(dist_f, "%s\n", tree_hash);
+  fclose(dist_f);
 
   return true;
 }

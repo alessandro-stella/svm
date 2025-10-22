@@ -83,7 +83,7 @@ char *add_command(const char *c) {
         continue;
       }
 
-      printf("\nBlob for %s (original size: %lu) created: %s", dir->d_name, file_size, hash);
+      printf("Blob for %s (original size: %lu) created: %s", dir->d_name, file_size, hash);
       printf("\n");
 
       fprintf(tmp, "blob %s %s\n", hash, dir->d_name);
