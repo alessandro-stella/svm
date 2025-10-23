@@ -25,9 +25,11 @@ bool init_command() {
   }
   fclose(current_dist);
 
-  char *tree_hash = add_command(".");
-  if (!tree_hash)
+  FILE *prep = fopen(".svm/prep", "wb");
+  if (!prep)
     return false;
+
+  fclose(prep);
 
   char dist_path[256];
   snprintf(dist_path, sizeof(dist_path), ".svm/dists/%s", "master");
@@ -35,7 +37,7 @@ bool init_command() {
   if (!dist_f)
     return false;
 
-  fprintf(dist_f, "%s\n", tree_hash);
+  fprintf(dist_f, "%s\n", "CIOLA");
   fclose(dist_f);
 
   return true;

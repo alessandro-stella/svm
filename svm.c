@@ -38,6 +38,7 @@ int main(int argc, char *argv[]) {
   }
 
   switch (argv[1][0]) {
+    // Help
   case 'h': {
     if (strcmp(argv[1], "help") != 0) {
       printf("Unknown command!\n\n");
@@ -46,6 +47,7 @@ int main(int argc, char *argv[]) {
     print_help();
   } break;
 
+    // Init
   case 'i': {
     if (strcmp(argv[1], "init") != 0) {
       printf("Unknown command!\n\n");
@@ -63,9 +65,10 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    printf("\nsvm initialized successfully\n");
+    printf("svm initialized successfully\n");
   } break;
 
+    // Add
   case 'a': {
     if (strcmp(argv[1], "add") != 0) {
       printf("Unknown command!\n\n");
@@ -78,90 +81,11 @@ int main(int argc, char *argv[]) {
       break;
     }
 
-    FILE *f = fopen(".svm/current_dist", "rb");
-    if (!f) {
-      printf("Error while retrieving current dist\n");
-      return -1;
-    }
-
-    fseek(f, 0, SEEK_END);
-    long file_size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    if (file_size <= 0) {
-      printf("Error while retrieving current dist (empty file)\n");
-      fclose(f);
-      return -1;
-    }
-
-    char *current_dist = (char *)malloc(file_size + 1);
-    if (!current_dist) {
-      perror("malloc");
-      fclose(f);
-      return -1;
-    }
-
-    size_t read_bytes = fread(current_dist, 1, file_size, f);
-    fclose(f);
-
-    if (read_bytes != (size_t)file_size) {
-      fprintf(stderr, "Error while retrieving current dist\n");
-      free(current_dist);
-      return -1;
-    }
-
-    current_dist[file_size] = '\0';
-
-    char *tree_hash = add_command(".");
-    if (!tree_hash) {
-      printf("\nError during tree creation\n");
-      free(current_dist);
-      break;
-    }
-
-    printf("\nTree generated successfully\n");
-    printf("Hash: %s\n", tree_hash);
-
-    char dist_path[256];
-    snprintf(dist_path, sizeof(dist_path), ".svm/dists/%s", current_dist);
-
-    FILE *dist_f = fopen(dist_path, "r");
-    char last_hash[128] = {0};
-    if (dist_f) {
-      fseek(dist_f, 0, SEEK_END);
-      long size = ftell(dist_f);
-      if (size > 0) {
-        long pos = size - 1;
-        int c;
-        while (pos >= 0) {
-          fseek(dist_f, pos, SEEK_SET);
-          c = fgetc(dist_f);
-          if (c == '\n' && pos != size - 1)
-            break;
-          pos--;
-        }
-        if (pos < 0)
-          fseek(dist_f, 0, SEEK_SET);
-        fgets(last_hash, sizeof(last_hash), dist_f);
-        size_t len = strlen(last_hash);
-        if (len > 0 && last_hash[len - 1] == '\n')
-          last_hash[len - 1] = '\0';
-      }
-      fclose(dist_f);
-    }
-
-    dist_f = fopen(dist_path, "a");
-    if (dist_f) {
-      if (strcmp(last_hash, tree_hash) != 0) {
-        fprintf(dist_f, "%s\n", tree_hash);
-      }
-      fclose(dist_f);
-    }
-
-    free(tree_hash);
-    free(current_dist);
+    // TODO: Chiamo add_command, genero l'hash del tree che punta allo stato attuale della dist
+    // Salva dentro dists/... l'hash generato, il messaggio e il tree precedente (capire come)
   } break;
 
+    // Unpack
   case 'u': {
     if (strcmp(argv[1], "unpack") != 0) {
       printf("Unknown command!\n\n");
@@ -213,6 +137,7 @@ int main(int argc, char *argv[]) {
     free(decompressed);
   } break;
 
+    // Clean
   case 'c': {
     if (strcmp(argv[1], "clean") != 0) {
       printf("Unknown command!\n\n");
@@ -236,6 +161,7 @@ int main(int argc, char *argv[]) {
     printf("svm removed successfully\n");
   } break;
 
+    // Dist
   case 'd': {
     if (strcmp(argv[1], "dist") != 0) {
       printf("Unknown command!\n\n");
@@ -259,10 +185,10 @@ int main(int argc, char *argv[]) {
 
     snprintf(path, sizeof(path), "%s/%s", dist_path, argv[3]);
 
-    FILE *f = fopen(path, "r");
-    if (f) {
+    FILE *fd = fopen(path, "r");
+    if (fd) {
       printf("Dist \"%s\" already exists\n", argv[3]);
-      fclose(f);
+      fclose(fd);
       break;
     }
 
@@ -280,6 +206,7 @@ int main(int argc, char *argv[]) {
     }
   } break;
 
+    // Switch
   case 's': {
     if (strcmp(argv[1], "switch") != 0) {
       printf("Unknown command!\n\n");
@@ -298,16 +225,55 @@ int main(int argc, char *argv[]) {
 
     snprintf(path, sizeof(path), "%s/%s", dist_path, argv[2]);
 
-    FILE *f = fopen(path, "r");
-    if (!f) {
+    FILE *fd = fopen(path, "r");
+    if (!fd) {
       printf("Dist \"%s\" does not exists\n", argv[2]);
       break;
     }
 
-    fclose(f);
+    fclose(fd);
 
     if (switch_command(argv[2], path)) {
       printf("Switched to dist \"%s\"\n", argv[2]);
+    }
+  } break;
+
+    // Prepare
+  case 'p': {
+    if (strcmp(argv[1], "prepare") != 0 && strcmp(argv[1], "prep")) {
+      printf("Unknown command!\n\n");
+      print_help();
+      return -1;
+    }
+
+    if (argc != 3) {
+      printf("Wrong syntax\n");
+      break;
+    }
+
+    if (strcmp(argv[2], ".") == 0) {
+      if (prepare_all(".") == 'e') {
+        printf("Error while preparing project for dist\n");
+      }
+
+      return -1;
+    }
+
+    char res = prepare_file(argv[2]);
+
+    switch (res) {
+    case 'a': {
+      printf("Added %s to tracking\n", argv[2]);
+    } break;
+
+    case 'u': {
+      printf("Updated %s to current tracking\n", argv[2]);
+    } break;
+
+    default: {
+      printf("Error while preparing file for dist\n");
+      return -1;
+    } break;
     }
   } break;
 
