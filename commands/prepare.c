@@ -56,46 +56,19 @@ char prepare_file(const char *path) {
   const char *hash_hex = hash_to_hex(hash, hash_len);
   free(buffer);
 
-  size_t bufsize = 128;
-  char *line = malloc(bufsize);
-  if (!line) {
-    printf("Error during memory allocation\n");
-    fclose(prep);
-    fclose(prep_tmp);
-    return 'e';
-  }
-
+  char *line = NULL;
+  size_t bufsize = 0;
+  ssize_t len;
   bool found = false;
 
-  while (fgets(line, bufsize, prep)) {
-    size_t len = strlen(line);
-
-    while (len > 0 && line[len - 1] != '\n' && !feof(prep)) {
-      bufsize *= 2;
-      char *tmp = realloc(line, bufsize);
-      if (!tmp) {
-        printf("Error during memory allocation\n");
-        free(line);
-        fclose(prep);
-        fclose(prep_tmp);
-        return 'e';
-      }
-      line = tmp;
-
-      if (fgets(line + len, bufsize - len, prep))
-        len = strlen(line);
-      else
-        break;
-    }
-
+  while ((len = getline(&line, &bufsize, prep)) != -1) {
     if (len > 0 && line[len - 1] == '\n')
       line[len - 1] = '\0';
 
     char *last_space = strrchr(line, ' ');
-    if (last_space)
-      last_space++;
+    char *file_path_in_prep = last_space ? last_space + 1 : NULL;
 
-    if (last_space && strcmp(path, last_space) == 0) {
+    if (file_path_in_prep && strcmp(path, file_path_in_prep) == 0) {
       fprintf(prep_tmp, "%s %s\n", hash_hex, path);
       found = true;
     } else {
@@ -152,12 +125,16 @@ char prepare_all(const char *path) {
       free(full_path);
       closedir(d);
       return 'e';
-    } else if (result == 'a' || result == 'u') {
-      overall_result = 'a';
-      if (result == 'a')
-        printf("Added %s to tracking\n", full_path);
-      else
-        printf("Updated %s to current tracking\n", full_path);
+    }
+
+    if (result == 'a' || result == 'u') {
+      if (dir->d_type != DT_DIR) {
+        overall_result = 'a';
+        if (result == 'a')
+          printf("Added %s to tracking\n", full_path);
+        else
+          printf("Updated %s to current tracking\n", full_path);
+      }
     }
 
     free(full_path);

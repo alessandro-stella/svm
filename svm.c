@@ -252,6 +252,9 @@ int main(int argc, char *argv[]) {
     }
 
     if (strcmp(argv[2], ".") == 0) {
+      FILE *prep = fopen(".svm/prep", "w");
+      fclose(prep);
+
       if (prepare_all(".") == 'e') {
         printf("Error while preparing project for dist\n");
       }
