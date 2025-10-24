@@ -1,5 +1,4 @@
 #include "../svm_commands.h"
-// #include "../utils/blob_handler.h"
 
 #include <dirent.h>
 #include <stddef.h>

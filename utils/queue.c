@@ -6,19 +6,32 @@
 #include <string.h>
 #include <sys/stat.h>
 
+char *create_dynamic_path(const char *parent_dir, const char *name) {
+  size_t len = strlen(parent_dir) + 1 + strlen(name) + 1;
+  char *new_path = (char *)malloc(len);
+
+  if (new_path == NULL) {
+    perror("malloc failed");
+    return NULL;
+  }
+
+  snprintf(new_path, len, "%s/%s", parent_dir, name);
+  return new_path;
+}
+
 void print_queue(Queue *head) {
   Queue *ref = head;
 
   while (ref != NULL) {
-    printf("\nDepth: %d\n", ref->depth);
+    printf("\nDepth: %d (Total Files: %zu)\n", ref->depth, ref->path_table->count);
 
-    Node *path_ref = ref->path_head;
-
-    while (path_ref != NULL) {
-      printf("%s\n", path_ref->path);
-      path_ref = path_ref->next;
+    for (size_t i = 0; i < ref->path_table->size; i++) {
+      HNode *path_ref = ref->path_table->buckets[i];
+      while (path_ref != NULL) {
+        printf("%s\n", path_ref->key);
+        path_ref = path_ref->next;
+      }
     }
-
     ref = ref->next;
   }
 }
@@ -27,17 +40,9 @@ void free_queue(Queue *head) {
   Queue *q_current = head;
 
   while (q_current != NULL) {
-    Node *n_current = q_current->path_head;
-
-    while (n_current != NULL) {
-      Node *n_next = n_current->next;
-      free(n_current->path);
-      free(n_current);
-      n_current = n_next;
-    }
+    ht_free(q_current->path_table);
 
     Queue *q_next = q_current->next;
-
     free(q_current);
     q_current = q_next;
   }
@@ -52,53 +57,27 @@ void add_to_queue(Queue *head, char *path, int depth) {
 
   if (ref->depth != depth) {
     Queue *next_ref = ref->next;
-    ref->next = malloc(sizeof(Queue));
-
-    ref = ref->next;
-    ref->next = next_ref;
-
-    ref->depth = depth;
-    ref->path_head = malloc(sizeof(Node));
-
-    ref->path_head->path = path;
-    ref->path_head->next = NULL;
-  } else {
-    if (ref->path_head == NULL) {
-      ref->path_head = malloc(sizeof(Node));
-      ref->path_head->path = path;
-      ref->path_head->next = NULL;
-    } else {
-      Node *n = ref->path_head;
-
-      while (n->next)
-        n = n->next;
-
-      n->next = malloc(sizeof(Node));
-      n->next->path = path;
-      n->next->next = NULL;
+    Queue *new_queue = malloc(sizeof(Queue));
+    if (new_queue == NULL) {
+      perror("malloc failed");
+      return;
     }
-  }
-}
 
-char *create_dynamic_path(const char *parent_dir, const char *name) {
-  size_t len = strlen(parent_dir) + 1 + strlen(name) + 1;
+    new_queue->next = next_ref;
+    new_queue->depth = depth;
+    new_queue->path_table = ht_create();
 
-  char *new_path = (char *)malloc(len);
-
-  if (new_path == NULL) {
-    perror("malloc failed");
-    return NULL;
+    ref->next = new_queue;
+    ref = new_queue;
   }
 
-  snprintf(new_path, len, "%s/%s", parent_dir, name);
-
-  return new_path;
+  ht_insert(ref->path_table, path);
+  free(path);
 }
 
-Queue *traverse(Queue *head, char *fn, int depth) {
+void traverse(Queue *head, char *fn, int depth) {
   DIR *dir;
   struct dirent *entry;
-  struct stat info;
 
   if ((dir = opendir(fn)) == NULL)
     perror("opendir() error");
@@ -122,14 +101,16 @@ Queue *traverse(Queue *head, char *fn, int depth) {
 
     closedir(dir);
   }
-
-  return head;
 }
 
 Queue *init_queue() {
   Queue *head = malloc(sizeof(Queue));
+  if (head == NULL) {
+    perror("malloc failed");
+    return NULL;
+  }
   head->depth = 0;
-  head->path_head = NULL;
+  head->path_table = ht_create();
   head->next = NULL;
 
   return head;

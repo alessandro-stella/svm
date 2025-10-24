@@ -13,8 +13,8 @@ bool dist_create(const char *dist_name, const char *path);
 
 bool init_command();
 
-char prepare_all(const char *path);
-char prepare_file(const char *path);
+char prepare_all(char *path);
+char prepare_file(char *path);
 
 bool switch_command(const char *dist_name, const char *path);
 
