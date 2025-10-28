@@ -53,7 +53,7 @@ int create_directory(const char *path) {
   return 0;
 }
 
-int create_blob(const void *data_in, size_t len_in, const char *hex_hash) {
+int create_blob(const unsigned char *data_in, size_t len_in, const char *hex_hash) {
   size_t dir_size = strlen(".svm/objects/") + 3;
   char *dir_path = malloc(dir_size);
 
@@ -100,27 +100,31 @@ int create_blob(const void *data_in, size_t len_in, const char *hex_hash) {
     strm.avail_out = BUF_SIZE;
     strm.next_out = out_buf;
 
-    int flush = (strm.avail_in == 0) ? Z_FINISH : Z_NO_FLUSH;
-    ret = deflate(&strm, flush);
-
+    ret = deflate(&strm, Z_FINISH);
     if (ret == Z_STREAM_ERROR) {
       (void)deflateEnd(&strm);
       fclose(file_out);
       return ret;
     }
 
-    unsigned int have = BUF_SIZE - strm.avail_out;
-
+    size_t have = BUF_SIZE - strm.avail_out;
     if (fwrite(out_buf, 1, have, file_out) != have || ferror(file_out)) {
       (void)deflateEnd(&strm);
       fclose(file_out);
       return Z_ERRNO;
     }
+  } while (strm.avail_out == 0);
 
-  } while (ret != Z_STREAM_END);
+  if (ret != Z_STREAM_END) {
+    (void)deflateEnd(&strm);
+    fclose(file_out);
+    return Z_STREAM_ERROR;
+  }
 
   (void)deflateEnd(&strm);
-  fclose(file_out);
+  if (fclose(file_out) != 0) {
+    return Z_ERRNO;
+  }
 
   return Z_OK;
 }

@@ -49,9 +49,6 @@ char *hash_to_hex(const unsigned char *hash, size_t len) {
   return hex;
 }
 
-// ============================
-// Incremental hash
-// ============================
 EVP_MD_CTX *hash_init(void) {
   EVP_MD_CTX *ctx = EVP_MD_CTX_new();
   if (!ctx)
@@ -64,23 +61,24 @@ EVP_MD_CTX *hash_init(void) {
 }
 
 bool hash_update(EVP_MD_CTX *ctx, const unsigned char *data, size_t len) {
-  if (!ctx || !data)
+  if (EVP_DigestUpdate(ctx, data, len) != 1) {
     return false;
-  return EVP_DigestUpdate(ctx, data, len) == 1;
+  }
+  return true;
 }
 
 unsigned char *hash_finalize(EVP_MD_CTX *ctx, size_t *hash_len) {
-  if (!ctx || !hash_len)
-    return NULL;
-
   const EVP_MD *md = EVP_sha256();
   unsigned char *hash = malloc(EVP_MD_size(md));
-  if (!hash)
+  if (!hash) {
+    EVP_MD_CTX_free(ctx);
     return NULL;
+  }
 
   unsigned int out_len;
   if (EVP_DigestFinal_ex(ctx, hash, &out_len) != 1) {
     free(hash);
+    EVP_MD_CTX_free(ctx);
     return NULL;
   }
 

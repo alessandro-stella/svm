@@ -33,6 +33,45 @@ char *join_path(const char *base, const char *subdir) {
   return path;
 }
 
+static int get_depth(const char *path) {
+  if (path == NULL || *path == '\0') {
+    return 0;
+  }
+
+  int count = 0;
+  const char *p = path;
+
+  if (strncmp(p, "./", 2) == 0) {
+    p += 2;
+  }
+
+  if (*p == '\0') {
+    return 0;
+  }
+
+  const char *end = p + strlen(p);
+
+  if (end > p && *(end - 1) == '/') {
+    end--;
+  }
+
+  if (p == end && *p == '.') {
+    return 0;
+  }
+
+  if (p < end) {
+    count = 0;
+    while (p < end) {
+      if (*p == '/') {
+        count++;
+      }
+      p++;
+    }
+  }
+
+  return count;
+}
+
 char *add_command() {
   // TODO: La funzione deve leggere index con tutti i file e creare il tree corrispondente
 

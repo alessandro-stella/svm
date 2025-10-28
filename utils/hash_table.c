@@ -7,7 +7,7 @@
 #define INITIAL_SIZE 101
 #define MAX_LOAD_FACTOR 0.75
 
-size_t get_next_prime(size_t n) {
+static size_t get_next_prime(size_t n) {
   if (n < 2)
     return 2;
   size_t next = n % 2 == 0 ? n + 1 : n + 2;
@@ -23,18 +23,18 @@ size_t get_next_prime(size_t n) {
   }
 }
 
-size_t hash_function(const char *key, size_t size) {
+static size_t hash_function(const char *key, size_t size) {
   unsigned long hash = 5381;
   int c;
 
   while ((c = *key++)) {
-    hash = ((hash << 5) + hash) + c;
+    hash = ((hash << 5) + hash) + c; // hash * 33 + c
   }
 
   return hash % size;
 }
 
-int ht_resize(HashTable *ht) {
+static int ht_resize(HashTable *ht) {
   size_t old_size = ht->size;
   size_t new_size = get_next_prime(old_size * 2);
 
@@ -47,36 +47,36 @@ int ht_resize(HashTable *ht) {
 
   ht->buckets = new_buckets;
   ht->size = new_size;
+  ht->count = 0;
 
   for (size_t i = 0; i < old_size; i++) {
     HNode *current = old_buckets[i];
-
     while (current != NULL) {
-      HNode *next_node = current->next;
+      HNode *next_hnode = current->next;
 
-      size_t new_index = hash_function(current->key, ht->size);
+      size_t index = hash_function(current->key, ht->size);
+      current->next = ht->buckets[index];
+      ht->buckets[index] = current;
+      ht->count++;
 
-      current->next = ht->buckets[new_index];
-      ht->buckets[new_index] = current;
-
-      current = next_node;
+      current = next_hnode;
     }
   }
 
   free(old_buckets);
-
   return 1;
 }
 
 HashTable *ht_create() {
   HashTable *ht = (HashTable *)malloc(sizeof(HashTable));
-  if (ht == NULL)
+  if (ht == NULL) {
     return NULL;
+  }
 
   ht->size = INITIAL_SIZE;
   ht->count = 0;
-
   ht->buckets = (HNode **)calloc(ht->size, sizeof(HNode *));
+
   if (ht->buckets == NULL) {
     free(ht);
     return NULL;
@@ -85,7 +85,40 @@ HashTable *ht_create() {
   return ht;
 }
 
+void ht_free(HashTable *ht) {
+  if (ht == NULL)
+    return;
+
+  for (size_t i = 0; i < ht->size; i++) {
+    HNode *current = ht->buckets[i];
+    while (current != NULL) {
+      HNode *next_hnode = current->next;
+      free(current->key);
+      free(current);
+      current = next_hnode;
+    }
+  }
+
+  free(ht->buckets);
+  free(ht);
+}
+
+int ht_lookup(HashTable *ht, const char *key) {
+  size_t index = hash_function(key, ht->size);
+  HNode *current = ht->buckets[index];
+
+  while (current != NULL) {
+    if (strcmp(current->key, key) == 0) {
+      return 1;
+    }
+    current = current->next;
+  }
+
+  return 0;
+}
+
 void ht_insert(HashTable *ht, const char *key) {
+
   if ((double)ht->count / ht->size >= MAX_LOAD_FACTOR) {
     if (!ht_resize(ht)) {
       return;
@@ -108,51 +141,4 @@ void ht_insert(HashTable *ht, const char *key) {
   ht->buckets[index] = new_node;
 
   ht->count++;
-}
-
-int ht_lookup(HashTable *ht, const char *key) {
-  size_t index = hash_function(key, ht->size);
-  HNode *current = ht->buckets[index];
-
-  while (current != NULL) {
-    if (strcmp(current->key, key) == 0) {
-      return 1;
-    }
-    current = current->next;
-  }
-
-  return 0;
-}
-
-void ht_free(HashTable *ht) {
-  if (ht == NULL)
-    return;
-
-  for (size_t i = 0; i < ht->size; i++) {
-    HNode *current = ht->buckets[i];
-    while (current != NULL) {
-      HNode *next_hnode = current->next;
-      free(current->key);
-      free(current);
-      current = next_hnode;
-    }
-  }
-
-  free(ht->buckets);
-  free(ht);
-}
-
-// Implementazione della funzione ht_iterate_all
-void ht_iterate_all(HashTable *ht, void (*callback)(const char *path, void *data), void *data) {
-  if (ht == NULL || callback == NULL) {
-    return;
-  }
-
-  for (size_t i = 0; i < ht->size; i++) {
-    HNode *current = ht->buckets[i];
-    while (current != NULL) {
-      callback(current->key, data);
-      current = current->next;
-    }
-  }
 }
