@@ -8,16 +8,15 @@
 #include <unistd.h>
 
 void print_help() {
-  const char *commands[8][3] = {{"help", "", "Display all svm commands"},
+  const char *commands[9][3] = {{"help", "", "Display all svm commands"},
                                 {"init", "", "Initialize svm project inside current directory"},
                                 {"clean", "", "Remove svm project inside current directory"},
-                                {"add", "", "Add all files in current directory to current svm distribution"},
+                                {"add", "", "Add all files prepared with \"prep\" to current svm distribution"},
+                                {"prep", "", "Prepare files before adding to distribution"},
                                 {"unpack", "<blob_hash>", "Show content of a blob of current svm distribution"},
                                 {"dist", "", "Show add distributions in current project"},
                                 {"dist create", "<dist_name>", "Create a new distribution"},
-                                {"switch", "<dist_name>", "Switch to another distribution"}
-
-  };
+                                {"switch", "<dist_name>", "Switch to another distribution"}};
 
   for (int i = 0; i < 5; i++) {
     printf("svm %s %s\n", commands[i][0], commands[i][1]);
@@ -32,32 +31,34 @@ int main(int argc, char *argv[]) {
   }
 
   struct stat st;
+  // Check for .svm folder unless the command is "init"
   if (stat(".svm", &st) == -1 && strcmp(argv[1], "init")) {
     printf("svm not initialized\n");
     return -1;
   }
 
   switch (argv[1][0]) {
-    // Help
+  // Help
   case 'h': {
     if (strcmp(argv[1], "help") != 0) {
       printf("Unknown command!\n\n");
     }
 
     print_help();
-  } break;
+    return 0;
+  }
 
-    // Init
+  // Init
   case 'i': {
     if (strcmp(argv[1], "init") != 0) {
       printf("Unknown command!\n\n");
       print_help();
-      break;
+      return -1;
     }
 
     if (stat(".svm", &st) != -1) {
       printf("svm already initialized\n");
-      break;
+      return -1;
     }
 
     if (!init_command()) {
@@ -66,23 +67,30 @@ int main(int argc, char *argv[]) {
     }
 
     printf("svm initialized successfully\n");
-  } break;
+    return 0;
+  }
 
-    // Add
+  // Add
   case 'a': {
     if (strcmp(argv[1], "add") != 0) {
       printf("Unknown command!\n\n");
       print_help();
-      break;
+      return -1;
     }
 
     if (stat(".svm/dists", &st) == -1) {
       printf("Distribution directory missing\n");
-      break;
+      return -1;
     }
 
-    // TODO: Chiamo add_command, genero l'hash del tree che punta allo stato attuale della dist
-    // Salva dentro dists/... l'hash generato, il messaggio e il tree precedente (capire come)
+    char *res = add_command();
+
+    if (res == NULL) {
+      printf("Error during add command\n");
+      return -1;
+    }
+
+    printf("Distribution tree created successfully!\nHash: %s\n", res);
   } break;
 
     // Unpack
@@ -93,9 +101,8 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    struct stat st;
-
-    if (stat(".svm/objects", &st) == -1) {
+    struct stat st_unpack;
+    if (stat(".svm/objects", &st_unpack) == -1) {
       printf("objects directory missing\n");
       return -1;
     }
@@ -108,8 +115,12 @@ int main(int argc, char *argv[]) {
 
     char subdir[256];
     snprintf(subdir, sizeof(subdir), ".svm/objects/%.2s", argv[2]);
-    if (stat(subdir, &st) == -1) {
-      printf("Blob not found\n");
+
+    char blob_path[512];
+    snprintf(blob_path, sizeof(blob_path), "%s/%s", subdir, argv[2] + 2);
+
+    if (stat(blob_path, &st_unpack) == -1) {
+      printf("Blob not found (hash: %s)\n", argv[2]);
       return -1;
     }
 
@@ -121,22 +132,38 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    char *content_start = strchr(decompressed, '\0');
+    // --- LOGICA DI PARSING DELL'HEADER CORRETTA ---
 
-    if (content_start == NULL) {
+    // 1. Controlla che inizi con "blob "
+    if (strncmp(decompressed, "blob ", 5) != 0) {
+      fprintf(stderr, "Header decompresso malformato (non inizia con 'blob ').\n");
       free(decompressed);
       return -1;
     }
 
-    content_start++;
+    // 2. Trova il byte nullo ('\0') che separa l'header dalla parte binaria.
+    // Iniziamo la ricerca dopo "blob " (5 caratteri) e cerchiamo fino alla fine.
+    // Si usa memchr perché il byte nullo è un separatore, non un terminatore di stringa qui.
+    char *header_end = (char *)memchr(decompressed + 5, '\0', original_len - 5);
+
+    if (header_end == NULL) {
+      fprintf(stderr, "Header decompresso malformato (manca byte nullo separatore).\n");
+      free(decompressed);
+      return -1;
+    }
+
+    // L'inizio del contenuto è SUBITO DOPO il byte nullo ('\0')
+    char *content_start = header_end + 1;
+
+    // --- FINE LOGICA DI PARSING ---
 
     size_t content_len = original_len - (content_start - decompressed);
 
     fwrite(content_start, 1, content_len, stdout);
 
     free(decompressed);
-  } break;
-
+    return 0;
+  }
     // Clean
   case 'c': {
     if (strcmp(argv[1], "clean") != 0) {
@@ -147,7 +174,6 @@ int main(int argc, char *argv[]) {
 
     printf("Are you sure you want to remove svm from current project? [y/N]: ");
     char choice;
-    fflush(stdin);
     scanf(" %c", &choice);
 
     if (choice != 'y' && choice != 'Y')
@@ -159,9 +185,10 @@ int main(int argc, char *argv[]) {
     }
 
     printf("svm removed successfully\n");
-  } break;
+    return 0;
+  }
 
-    // Dist
+  // Dist
   case 'd': {
     if (strcmp(argv[1], "dist") != 0) {
       printf("Unknown command!\n\n");
@@ -171,13 +198,14 @@ int main(int argc, char *argv[]) {
 
     if (argc == 2) {
       dist_show();
+      return 0;
       break;
     }
 
     if (argc != 4 || strcmp(argv[2], "create") != 0) {
       printf("Syntax error!\n");
       printf("git dist create <diff_name>\n");
-      break;
+      return -1;
     }
 
     const char *dist_path = ".svm/dists";
@@ -189,24 +217,25 @@ int main(int argc, char *argv[]) {
     if (fd) {
       printf("Dist \"%s\" already exists\n", argv[3]);
       fclose(fd);
-      break;
+      return -1;
     }
 
     printf("Are you sure you want to create a dist called \"%s\"? [y/N]: ", argv[3]);
-    fflush(stdin);
     char choice;
-    scanf("%c", &choice);
+    scanf(" %c", &choice);
 
     if (choice != 'y' && choice != 'Y') {
-      break;
+      return 0;
     }
 
     if (dist_create(argv[3], path)) {
       printf("\nDist \"%s\" created successfully\n", argv[3]);
+      return 0;
     }
-  } break;
+    return -1;
+  }
 
-    // Switch
+  // Switch
   case 's': {
     if (strcmp(argv[1], "switch") != 0) {
       printf("Unknown command!\n\n");
@@ -217,7 +246,7 @@ int main(int argc, char *argv[]) {
     if (argc != 3) {
       printf("Syntax error!\n");
       printf("git switch <diff_name>\n");
-      break;
+      return -1;
     }
 
     const char *dist_path = ".svm/dists";
@@ -228,57 +257,34 @@ int main(int argc, char *argv[]) {
     FILE *fd = fopen(path, "r");
     if (!fd) {
       printf("Dist \"%s\" does not exists\n", argv[2]);
-      break;
+      return -1;
     }
 
     fclose(fd);
 
     if (switch_command(argv[2], path)) {
       printf("Switched to dist \"%s\"\n", argv[2]);
+      return 0;
     }
-  } break;
+    return -1;
+  }
 
-    // Prepare
+  // Prepare
   case 'p': {
-    if (strcmp(argv[1], "prepare") != 0 && strcmp(argv[1], "prep")) {
+    if (strcmp(argv[1], "prep") != 0) {
       printf("Unknown command!\n\n");
       print_help();
       return -1;
     }
 
-    if (argc != 3) {
-      printf("Wrong syntax\n");
-      break;
-    }
-
-    if (strcmp(argv[2], ".") == 0) {
-      FILE *prep = fopen(".svm/prep", "w");
-      fclose(prep);
-
-      if (prepare_all(".") == 'e') {
-        printf("Error while preparing project for dist\n");
-      }
-
+    if (!prep_command(".")) {
+      printf("Error while preparing project for dist\n");
       return -1;
     }
 
-    char res = prepare_file(argv[2]);
-
-    switch (res) {
-    case 'a': {
-      printf("Added %s to tracking\n", argv[2]);
-    } break;
-
-    case 'u': {
-      printf("Updated %s to current tracking\n", argv[2]);
-    } break;
-
-    default: {
-      printf("Error while preparing file for dist\n");
-      return -1;
-    } break;
-    }
-  } break;
+    printf("Project prepared successfully.\n");
+    return 0;
+  }
 
   default:
     printf("Unknown command!\n\n");
