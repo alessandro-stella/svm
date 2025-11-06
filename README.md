@@ -10,7 +10,7 @@ Btw, someone says that the S stands for "Star"...
 |---------|-----------|-------------|
 | `svm help`    | -         | Display all svm commands |
 | `svm init`    | -         | Initialize svm project inside current directory |
-| `svm clean`   | -         | Remove svm project inside current directory |
+| `svm clear`   | -         | Remove svm project inside current directory |
 | `svm add`     | -         | Add all files in current directory to current svm distribution |
 | `svm unpack`  | `<blob_hash>` | Show content of a blob of current svm distribution |
 | `dist`        | -         | Show add distributions in current project |

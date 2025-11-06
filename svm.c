@@ -1,4 +1,5 @@
 #include "svm_commands.h"
+#include "utils/constants.h"
 
 #include <dirent.h>
 #include <stdio.h>
@@ -8,17 +9,17 @@
 #include <unistd.h>
 
 void print_help() {
-  const char *commands[9][3] = {{"help", "", "Display all svm commands"},
-                                {"init", "", "Initialize svm project inside current directory"},
-                                {"clean", "", "Remove svm project inside current directory"},
-                                {"add", "", "Add all files prepared with \"prep\" to current svm distribution"},
-                                {"prep", "", "Prepare files before adding to distribution"},
-                                {"unpack", "<blob_hash>", "Show content of a blob of current svm distribution"},
-                                {"dist", "", "Show add distributions in current project"},
-                                {"dist create", "<dist_name>", "Create a new distribution"},
-                                {"switch", "<dist_name>", "Switch to another distribution"}};
+  const char *commands[COMMANDS_NUMBER][3] = {{"help", "", "Display all svm commands"},
+                                              {"init", "", "Initialize svm project inside current directory"},
+                                              {"clear", "", "Remove svm project inside current directory"},
+                                              {"add", "<message>", "Add all files prepared with \"prep\" to current svm distribution"},
+                                              {"prep", "", "Prepare files before adding to distribution"},
+                                              {"unpack", "<blob_hash>", "Show content of a blob of current svm distribution"},
+                                              {"dist", "", "Show add distributions in current project"},
+                                              {"dist create", "<dist_name>", "Create a new distribution"},
+                                              {"switch", "<dist_name>", "Switch to another distribution"}};
 
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < COMMANDS_NUMBER; i++) {
     printf("svm %s %s\n", commands[i][0], commands[i][1]);
     printf("%s\n\n", commands[i][2]);
   }
@@ -38,6 +39,7 @@ int main(int argc, char *argv[]) {
   }
 
   switch (argv[1][0]) {
+
   // Help
   case 'h': {
     if (strcmp(argv[1], "help") != 0) {
@@ -83,7 +85,13 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    char *res = add_command();
+    if (argc != 3) {
+      printf("Syntax error!\n");
+      printf("svm add <message>\n");
+      return -1;
+    }
+
+    char *res = add_command(argv[2]);
 
     if (res == NULL) {
       printf("Error during add command\n");
@@ -91,6 +99,7 @@ int main(int argc, char *argv[]) {
     }
 
     printf("Distribution tree created successfully!\nHash: %s\n", res);
+
   } break;
 
     // Unpack
@@ -132,41 +141,37 @@ int main(int argc, char *argv[]) {
       return -1;
     }
 
-    // --- LOGICA DI PARSING DELL'HEADER CORRETTA ---
-
-    // 1. Controlla che inizi con "blob "
     if (strncmp(decompressed, "blob ", 5) != 0) {
-      fprintf(stderr, "Header decompresso malformato (non inizia con 'blob ').\n");
+      fprintf(stderr, "Malformed decompressed header (not starting with 'blob ').\n");
       free(decompressed);
       return -1;
     }
 
-    // 2. Trova il byte nullo ('\0') che separa l'header dalla parte binaria.
-    // Iniziamo la ricerca dopo "blob " (5 caratteri) e cerchiamo fino alla fine.
-    // Si usa memchr perché il byte nullo è un separatore, non un terminatore di stringa qui.
     char *header_end = (char *)memchr(decompressed + 5, '\0', original_len - 5);
 
     if (header_end == NULL) {
-      fprintf(stderr, "Header decompresso malformato (manca byte nullo separatore).\n");
+      fprintf(stderr, "Malformed decompressed header (missing null byte separator).\n");
       free(decompressed);
       return -1;
     }
 
-    // L'inizio del contenuto è SUBITO DOPO il byte nullo ('\0')
     char *content_start = header_end + 1;
-
-    // --- FINE LOGICA DI PARSING ---
 
     size_t content_len = original_len - (content_start - decompressed);
 
-    fwrite(content_start, 1, content_len, stdout);
+    if (content_len == 0) {
+      printf("<Empty file>\n");
+    } else {
+      fwrite(content_start, 1, content_len, stdout);
+    }
 
     free(decompressed);
     return 0;
   }
-    // Clean
+
+    // Clear
   case 'c': {
-    if (strcmp(argv[1], "clean") != 0) {
+    if (strcmp(argv[1], "clear") != 0) {
       printf("Unknown command!\n\n");
       print_help();
       return -1;
@@ -179,7 +184,7 @@ int main(int argc, char *argv[]) {
     if (choice != 'y' && choice != 'Y')
       return 0;
 
-    if (clear_command(".svm") != 0) {
+    if (remove_all_recursive(".svm") != 0) {
       perror("Couldn't remove svm from current project");
       return -1;
     }
@@ -199,17 +204,21 @@ int main(int argc, char *argv[]) {
     if (argc == 2) {
       dist_show();
       return 0;
-      break;
     }
 
     if (argc != 4 || strcmp(argv[2], "create") != 0) {
       printf("Syntax error!\n");
-      printf("git dist create <diff_name>\n");
+      printf("svm dist create <diff_name>\n");
+      return -1;
+    }
+
+    if (strlen(argv[3]) > MAX_DIST_NAME_LEN) {
+      printf("Error, the dist name is too long! Max length: %d", MAX_DIST_NAME_LEN);
       return -1;
     }
 
     const char *dist_path = ".svm/dists";
-    char path[128];
+    char path[MAX_PATH_LEN];
 
     snprintf(path, sizeof(path), "%s/%s", dist_path, argv[3]);
 
@@ -245,7 +254,7 @@ int main(int argc, char *argv[]) {
 
     if (argc != 3) {
       printf("Syntax error!\n");
-      printf("git switch <diff_name>\n");
+      printf("svm switch <diff_name>\n");
       return -1;
     }
 
@@ -262,10 +271,13 @@ int main(int argc, char *argv[]) {
 
     fclose(fd);
 
-    if (switch_command(argv[2], path)) {
-      printf("Switched to dist \"%s\"\n", argv[2]);
+    bool switch_res = switch_command(argv[2], path);
+
+    if (switch_res) {
       return 0;
     }
+
+    printf("Error while switching to another distribution");
     return -1;
   }
 

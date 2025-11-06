@@ -31,14 +31,17 @@ bool init_command() {
 
   fclose(prep);
 
-  char dist_path[256];
-  snprintf(dist_path, sizeof(dist_path), ".svm/dists/%s", "master");
-  FILE *dist_f = fopen(dist_path, "w");
-  if (!dist_f)
-    return false;
+  // TODO: mettere dist_create con "master" e "Inizialization"
 
-  fprintf(dist_f, "%s\n", "CIOLA");
-  fclose(dist_f);
+  // char dist_path[256];
+  // snprintf(dist_path, sizeof(dist_path), ".svm/dists/%s", "master");
+  // FILE *dist_f = fopen(dist_path, "w");
+  // if (!dist_f)
+  //   return false;
+  //
+  //
+  // fprintf(dist_f, "%s\n", "CIOLA");
+  // fclose(dist_f);
 
   return true;
 }

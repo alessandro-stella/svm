@@ -149,6 +149,7 @@ static void dfs_traverse_and_process(const char *fn, void *data) {
   size_t dir_count = 0;
 
   while ((entry = readdir(dir)) != NULL) {
+    // TODO: Controllare perchè non legge cartelle interne con .
     if (entry->d_name[0] == '.')
       continue;
 

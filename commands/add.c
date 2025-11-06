@@ -3,6 +3,7 @@
 #include "../utils/hashing.h"
 
 #include <dirent.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -12,8 +13,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <zlib.h>
-
-#define BUF_SIZE 16384
 
 typedef struct {
   char *data;
@@ -90,7 +89,7 @@ void freeLines(char **lines, size_t len) {
   free(lines);
 }
 
-void split_line(const char *input_line, char **first_half, char **second_half) {
+void split_line2(const char *input_line, char **first_half, char **second_half) {
   const char *delimiter = " ";
   char *context;
 
@@ -122,7 +121,7 @@ char *create_tree(char **lines, size_t lines_len, size_t start_index, size_t *en
   char *line_copy_start = strdup(lines[start_index]);
   if (line_copy_start == NULL)
     return NULL;
-  split_line(line_copy_start, &type_start, &path_start);
+  split_line2(line_copy_start, &type_start, &path_start);
 
   size_t path_len = strlen(path_start);
   if (path_len > 0 && path_start[path_len - 1] == '/') {
@@ -152,7 +151,7 @@ char *create_tree(char **lines, size_t lines_len, size_t start_index, size_t *en
     }
 
     char *ptr_to_free = line_copy;
-    split_line(line_copy, &entry_type, &entry_path);
+    split_line2(line_copy, &entry_type, &entry_path);
 
     if (entry_path == NULL || strncmp(entry_path, path_prefix, strlen(path_prefix)) != 0) {
       free(ptr_to_free);
@@ -233,12 +232,16 @@ char *create_tree(char **lines, size_t lines_len, size_t start_index, size_t *en
   return hex_hash;
 }
 
-char *add_command() {
+char *add_command(char *msg) {
   FILE *current_dist_fd = fopen(".svm/current_dist", "r");
   FILE *prep_fd = fopen(".svm/prep", "r");
 
   if (current_dist_fd == NULL || prep_fd == NULL) {
     fprintf(stderr, "Error: couldn't read distribution files\n");
+    if (current_dist_fd)
+      fclose(current_dist_fd);
+    if (prep_fd)
+      fclose(prep_fd);
     return NULL;
   }
 
@@ -256,9 +259,16 @@ char *add_command() {
   }
 
   if (content_size > 0) {
-    fread(current_dist, 1, content_size, current_dist_fd);
+    size_t read_bytes = fread(current_dist, 1, content_size, current_dist_fd);
+    if (read_bytes != content_size) {
+    }
   }
   current_dist[content_size] = '\0';
+
+  size_t dist_len = strlen(current_dist);
+  while (dist_len > 0 && (current_dist[dist_len - 1] == '\n' || current_dist[dist_len - 1] == ' ' || current_dist[dist_len - 1] == '\r')) {
+    current_dist[--dist_len] = '\0';
+  }
 
   size_t lines_len_initial = count_lines(prep_fd);
   size_t lines_len = lines_len_initial;
@@ -293,17 +303,33 @@ char *add_command() {
     free(line_ptr);
   }
 
+  fclose(prep_fd);
+
   size_t lines_checked = 0;
   char *tree_hash = create_tree(lines, lines_len, 0, &lines_checked);
 
-  if (tree_hash == NULL) {
-    return NULL;
+  if (tree_hash != NULL) {
+    char dist_path[PATH_MAX];
+
+    if (snprintf(dist_path, sizeof(dist_path), ".svm/dists/%s", current_dist) >= sizeof(dist_path)) {
+      fprintf(stderr, "Error: Distribution path too long.\n");
+    } else {
+      FILE *dist_fd = fopen(dist_path, "a");
+      if (dist_fd == NULL) {
+        perror("Error opening distribution history file for writing");
+      } else {
+        fprintf(dist_fd, "%s %s\n", tree_hash, msg);
+        printf("New tree hash %s added to distribution '%s' with message: %s\n", tree_hash, current_dist, msg);
+        fclose(dist_fd);
+      }
+    }
+  } else {
+    fprintf(stderr, "Error: Failed to create tree.\n");
   }
 
   freeLines(lines, lines_len);
   free(current_dist);
   fclose(current_dist_fd);
-  fclose(prep_fd);
 
   return tree_hash;
 }

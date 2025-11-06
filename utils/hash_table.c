@@ -1,11 +1,9 @@
 #include "hash_table.h"
+#include "constants.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define INITIAL_SIZE 101
-#define MAX_LOAD_FACTOR 0.75
 
 static size_t get_next_prime(size_t n) {
   if (n < 2)

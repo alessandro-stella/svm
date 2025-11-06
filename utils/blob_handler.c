@@ -1,4 +1,5 @@
 #include "blob_handler.h"
+#include "constants.h"
 
 #include <errno.h>
 #include <stdbool.h>
@@ -8,9 +9,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <zlib.h>
-
-#define BUF_SIZE 16384
-#define INITIAL_DECOMPRESSED_SIZE 1024
 
 int blob_exists(const char *hex_hash) {
   size_t path_size = strlen(".svm/objects/") + strlen(hex_hash) + 1;

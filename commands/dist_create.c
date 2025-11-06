@@ -15,8 +15,19 @@ bool dist_create(const char *dist_name, const char *path) {
 
   fprintf(c_d, "%s", dist_name);
 
-  // TODO: Fare prima prep
-  char *tree_hash = add_command();
+  bool prep_result = prep_command(".");
+
+  if (!prep_result) {
+    printf("Error during preparation of dist");
+    return false;
+  }
+
+  char *tree_hash = add_command("Initialization");
+  if (tree_hash == NULL) {
+    printf("Error while adding prepared files to dist");
+    return false;
+  }
+
   fprintf(fd, "%s", tree_hash);
 
   if (fclose(fd) == -1 || fclose(c_d) == -1) {

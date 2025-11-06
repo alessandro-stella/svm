@@ -44,7 +44,7 @@ char *unpack_command(const char *hex_hash, size_t *out_original_len) {
   size_str[size_len] = '\0';
 
   long original_len_long = strtol(size_str, NULL, 10);
-  if (original_len_long <= 0) {
+  if (original_len_long < 0) {
     fprintf(stderr, "Error: Could not parse original blob size.\n");
     free(decompressed_blob);
     return NULL;
