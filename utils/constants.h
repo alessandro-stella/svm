@@ -5,7 +5,7 @@
 #define MAX_PATH_LEN (12 + MAX_DIST_NAME_LEN + 1)
 #define COMMANDS_NUMBER 9
 
-// svm.c and switch.c
+// svm.c - switch.c - add.c
 #define MAX_DIST_NAME_LEN 256
 
 // add.c and blob_handler.c

@@ -1,5 +1,6 @@
 #include "../svm_commands.h"
 #include "../utils/blob_handler.h"
+#include "../utils/constants.h"
 #include "../utils/hashing.h"
 
 #include <dirent.h>
@@ -233,42 +234,64 @@ char *create_tree(char **lines, size_t lines_len, size_t start_index, size_t *en
 }
 
 char *add_command(char *msg) {
-  FILE *current_dist_fd = fopen(".svm/current_dist", "r");
   FILE *prep_fd = fopen(".svm/prep", "r");
+  FILE *current_dist_fd = fopen(".svm/current_dist", "rb");
 
   if (current_dist_fd == NULL || prep_fd == NULL) {
     fprintf(stderr, "Error: couldn't read distribution files\n");
+
     if (current_dist_fd)
       fclose(current_dist_fd);
+
     if (prep_fd)
       fclose(prep_fd);
+
     return NULL;
   }
 
-  fseek(current_dist_fd, 0, SEEK_END);
-  size_t content_size = ftell(current_dist_fd);
-  rewind(current_dist_fd);
+  char current_dist_buffer[MAX_DIST_NAME_LEN + 1];
+  char *current_dist = NULL;
+  size_t content_size = 0;
 
-  char *current_dist = (char *)malloc(content_size + 1);
+  if (fgets(current_dist_buffer, sizeof(current_dist_buffer), current_dist_fd) != NULL) {
+    content_size = strlen(current_dist_buffer);
 
-  if (current_dist == NULL) {
-    fprintf(stderr, "Allocation error for current_dist\n");
+    current_dist = (char *)malloc(content_size + 1);
+    if (current_dist == NULL) {
+      fprintf(stderr, "Allocation error for current_dist\n");
+      fclose(current_dist_fd);
+      fclose(prep_fd);
+      return NULL;
+    }
+    strcpy(current_dist, current_dist_buffer);
+
+    size_t dist_len = content_size;
+    while (dist_len > 0 && (current_dist[dist_len - 1] == '\n' || current_dist[dist_len - 1] == ' ' || current_dist[dist_len - 1] == '\r')) {
+      current_dist[--dist_len] = '\0';
+    }
+    content_size = dist_len;
+
+    printf("Current dist: %s - Length: %lu\n", current_dist, content_size);
+
+    fclose(current_dist_fd);
+
+  } else {
+    fprintf(stderr, "Error: Failed to read distribution name from .svm/current_dist. Reason: ");
+
+    if (feof(current_dist_fd)) {
+      fprintf(stderr, "File is empty or EOF reached immediately.\n");
+    } else if (ferror(current_dist_fd)) {
+      perror("");
+    } else {
+      fprintf(stderr, "Unknown error during read operation.\n");
+    }
+
     fclose(current_dist_fd);
     fclose(prep_fd);
     return NULL;
   }
 
-  if (content_size > 0) {
-    size_t read_bytes = fread(current_dist, 1, content_size, current_dist_fd);
-    if (read_bytes != content_size) {
-    }
-  }
-  current_dist[content_size] = '\0';
-
-  size_t dist_len = strlen(current_dist);
-  while (dist_len > 0 && (current_dist[dist_len - 1] == '\n' || current_dist[dist_len - 1] == ' ' || current_dist[dist_len - 1] == '\r')) {
-    current_dist[--dist_len] = '\0';
-  }
+  current_dist_fd = NULL;
 
   size_t lines_len_initial = count_lines(prep_fd);
   size_t lines_len = lines_len_initial;
@@ -277,7 +300,6 @@ char *add_command(char *msg) {
   if (lines == NULL) {
     printf("Error while reading lines\n");
     free(current_dist);
-    fclose(current_dist_fd);
     fclose(prep_fd);
     return NULL;
   }
@@ -310,10 +332,13 @@ char *add_command(char *msg) {
 
   if (tree_hash != NULL) {
     char dist_path[PATH_MAX];
+    printf("Current dist: %s\n", current_dist);
 
     if (snprintf(dist_path, sizeof(dist_path), ".svm/dists/%s", current_dist) >= sizeof(dist_path)) {
       fprintf(stderr, "Error: Distribution path too long.\n");
     } else {
+      printf("Dist path: %s\n", dist_path);
+
       FILE *dist_fd = fopen(dist_path, "a");
       if (dist_fd == NULL) {
         perror("Error opening distribution history file for writing");
@@ -329,7 +354,6 @@ char *add_command(char *msg) {
 
   freeLines(lines, lines_len);
   free(current_dist);
-  fclose(current_dist_fd);
 
   return tree_hash;
 }

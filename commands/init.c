@@ -2,7 +2,6 @@
 
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
 #include <sys/stat.h>
 
 bool init_command() {
@@ -15,33 +14,17 @@ bool init_command() {
   if (mkdir(".svm/dists", 0700) != 0) {
   }
 
-  FILE *current_dist = fopen(".svm/current_dist", "wb");
-  if (!current_dist)
-    return false;
-
-  if (fwrite("master", 1, strlen("master"), current_dist) != strlen("master")) {
-    fclose(current_dist);
-    return false;
-  }
-  fclose(current_dist);
-
   FILE *prep = fopen(".svm/prep", "wb");
   if (!prep)
     return false;
 
   fclose(prep);
 
-  // TODO: mettere dist_create con "master" e "Inizialization"
+  FILE *master_fd = fopen(".svm/dists/master", "w");
+  if (!master_fd)
+    return false;
 
-  // char dist_path[256];
-  // snprintf(dist_path, sizeof(dist_path), ".svm/dists/%s", "master");
-  // FILE *dist_f = fopen(dist_path, "w");
-  // if (!dist_f)
-  //   return false;
-  //
-  //
-  // fprintf(dist_f, "%s\n", "CIOLA");
-  // fclose(dist_f);
+  fclose(master_fd);
 
-  return true;
+  return dist_create("master", ".svm/dists/master");
 }
